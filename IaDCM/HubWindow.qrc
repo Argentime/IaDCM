@@ -1,0 +1,33 @@
+<RCC>
+    <qresource prefix="/HubWindow">
+        <file>BackMainWindow.png</file>
+        <file>Слой 2.png</file>
+        <file>ЭП.png</file>
+        <file>ЭП_hover.png</file>
+        <file>ЭП_pressed.png</file>
+        <file>BT.png</file>
+        <file>BT_hover.png</file>
+        <file>BT_pressed.png</file>
+        <file>DD.png</file>
+        <file>DD_hover.png</file>
+        <file>DD_pressed.png</file>
+        <file>INF.png</file>
+        <file>INF_hover.png</file>
+        <file>INF_pressed.png</file>
+        <file>PCI.png</file>
+        <file>PCI_hover.png</file>
+        <file>PCI_pressed.png</file>
+        <file>USB.png</file>
+        <file>USB_hover.png</file>
+        <file>USB_pressed.png</file>
+        <file>VC.png</file>
+        <file>VC_hover.png</file>
+        <file>VC_pressed.png</file>
+        <file>Batery.png</file>
+        <file>L1PH.png</file>
+        <file>Button1.png</file>
+        <file>Button1_hover.png</file>
+        <file>Button1_pressed.png</file>
+        <file>Pen-Pen-eat.gif</file>
+    </qresource>
+</RCC>
