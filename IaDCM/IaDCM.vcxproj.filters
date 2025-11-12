@@ -43,9 +43,15 @@
     <ClCompile Include="QtLab1Window.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="WebcamWindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="QtLab1Window.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="WebcamWindow.h">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>
