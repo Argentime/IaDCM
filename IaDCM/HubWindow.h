@@ -17,6 +17,7 @@ public:
 
 private:
     Ui::HubWindowClass ui;
+    QMovie* movie;
     QtLab1Window* lab1Window; // окно для ЛР1
     WebcamWindow* webcamWindow; // окно для работы с камерой
 };

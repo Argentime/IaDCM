@@ -10,7 +10,25 @@
 #include <QComboBox>
 #include <QPushButton>
 #include <QLabel>
+#include <QTextEdit>
+
 #include <windows.h> // <-- ВАЖНО: Подключаем заголовок Windows API
+#include <mfapi.h>
+#include <mfplay.h>
+#include <mfreadwrite.h>
+#include <Setupapi.h>
+#include <ks.h>
+
+struct WebcamInfo {
+    QString friendlyName;
+    QString symbolicLink;
+    QString supportedFormats; // Список разрешений, FPS, кодировок
+
+    // Из SetupAPI
+    QString manufacturer;
+    QString driverVersion;
+    QString hardwareIDs;
+};
 
 class WebcamWindow : public QWidget
 {
@@ -28,8 +46,6 @@ private slots:
     void setupCamera(int index);
     void capturePhoto();
     void toggleVideoRecording();
-
-    // Слот для управления скрытым режимом
     void toggleStealthMode();
 
 private:
@@ -46,6 +62,7 @@ private:
     QPushButton* m_photoButton = nullptr;
     QPushButton* m_videoButton = nullptr;
     QPushButton* m_stealthModeButton = nullptr; // <-- НОВАЯ КНОПКА
+    QTextEdit* m_infoTextEdit = nullptr;
     QLabel* m_statusLabel = nullptr;
 
     bool m_isRecording = false;
@@ -53,6 +70,9 @@ private:
 
     void initUI();
     void initCamera();
+
+    void updateWebcamDetails(int index);
+    WebcamInfo getWinApiWebcamInfo(int index); // <-- Функция для работы с WinAPI
 
     // ID для наших горячих клавиш
     const int TAKE_PHOTO_HOTKEY_ID = 1;

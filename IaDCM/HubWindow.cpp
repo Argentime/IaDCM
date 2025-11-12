@@ -7,6 +7,11 @@ HubWindow::HubWindow(QWidget* parent)
 {
     ui.setupUi(this);
 
+    movie = new QMovie(":/HubWindow/Pen-Pen-eat.gif");
+    ui.label_2->setScaledContents(true); 
+    ui.label_2->setMovie(movie);
+    movie->start();
+
     // --- Кнопка для открытия окна с информацией о питании ---
     connect(ui.pushButton, &QPushButton::clicked, this, [=]() {
         QtLab1Window* lab1Window = new QtLab1Window();
