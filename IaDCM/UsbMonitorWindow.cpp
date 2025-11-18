@@ -161,30 +161,39 @@ void UsbMonitorWindow::populateDeviceList()
 UsbDevice UsbMonitorWindow::getDeviceInfo(HDEVINFO hDevInfo, SP_DEVINFO_DATA& devInfoData)
 {
     UsbDevice device;
-    TCHAR buffer[256];
+    TCHAR buffer[512];
 
-    // Получаем "дружелюбное имя" или описание
+    // --- 1. Получаем базовую информацию о текущем узле (без изменений) ---
     if (SetupDiGetDeviceRegistryProperty(hDevInfo, &devInfoData, SPDRP_FRIENDLYNAME, NULL, (PBYTE)buffer, sizeof(buffer), NULL)) {
         device.name = QString::fromWCharArray(buffer);
-    }
-    else if (SetupDiGetDeviceRegistryProperty(hDevInfo, &devInfoData, SPDRP_DEVICEDESC, NULL, (PBYTE)buffer, sizeof(buffer), NULL)) {
+    } else if (SetupDiGetDeviceRegistryProperty(hDevInfo, &devInfoData, SPDRP_DEVICEDESC, NULL, (PBYTE)buffer, sizeof(buffer), NULL)) {
         device.name = QString::fromWCharArray(buffer);
     }
 
-    // Получаем тип устройства (класс)
     if (SetupDiGetDeviceRegistryProperty(hDevInfo, &devInfoData, SPDRP_CLASS, NULL, (PBYTE)buffer, sizeof(buffer), NULL)) {
         device.type = QString::fromWCharArray(buffer);
     }
-
-    // Получаем уникальный ID экземпляра
+    
     if (CM_Get_Device_ID(devInfoData.DevInst, buffer, MAX_PATH, 0) == CR_SUCCESS) {
         device.instanceId = QString::fromWCharArray(buffer);
     }
 
-    // Проверяем, можно ли устройство извлекать
+    // --- 2. ФИНАЛЬНАЯ, НАИБОЛЕЕ НАДЕЖНАЯ ЛОГИКА ПРОВЕРКИ ---
+    // Мы возвращаемся к проверке SPDRP_CAPABILITIES, но с более точными условиями.
+    // Этот метод не требует спуска по дереву устройств, так как нужные флаги
+    // обычно установлены на родительском узле, который мы и находим.
+
     DWORD capabilities = 0;
-    if (SetupDiGetDeviceRegistryProperty(hDevInfo, &devInfoData, SPDRP_CAPABILITIES, NULL, (PBYTE)&capabilities, sizeof(capabilities), NULL)) {
-        if (capabilities & CM_DEVCAP_REMOVABLE && capabilities & CM_DEVCAP_EJECTSUPPORTED) {
+    if (SetupDiGetDeviceRegistryProperty(hDevInfo, &devInfoData, SPDRP_CAPABILITIES, NULL, (PBYTE)&capabilities, sizeof(capabilities), NULL))
+    {
+        // Устройство считается извлекаемым, если оно:
+        // 1. Помечено как REMOVABLE (физически отсоединяемое).
+        // 2. И НЕ помечено как SURPRISEREMOVALOK (его НЕЛЬЗЯ выдергивать просто так).
+        // Это и есть точное определение устройства, требующего "Безопасного извлечения".
+        bool isRemovable = (capabilities & CM_DEVCAP_REMOVABLE);
+        bool isSurpriseRemovable = (capabilities & CM_DEVCAP_SURPRISEREMOVALOK);
+
+        if (isRemovable && isSurpriseRemovable) {
             device.isEjectable = true;
         }
     }
