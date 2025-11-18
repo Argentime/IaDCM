@@ -192,8 +192,9 @@ UsbDevice UsbMonitorWindow::getDeviceInfo(HDEVINFO hDevInfo, SP_DEVINFO_DATA& de
         // Это и есть точное определение устройства, требующего "Безопасного извлечения".
         bool isRemovable = (capabilities & CM_DEVCAP_REMOVABLE);
         bool isSurpriseRemovable = (capabilities & CM_DEVCAP_SURPRISEREMOVALOK);
+        bool isEjectSupported = (capabilities & CM_DEVCAP_EJECTSUPPORTED);
 
-        if (isRemovable && isSurpriseRemovable) {
+        if (isRemovable && (isSurpriseRemovable || isEjectSupported)) {
             device.isEjectable = true;
         }
     }
