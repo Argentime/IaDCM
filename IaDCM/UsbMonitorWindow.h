@@ -1,27 +1,31 @@
 #pragma once
 
 #include <QWidget>
+#include <QMap> // <-- Для нашей карты дисков
 
 // --- Подключаем все необходимые заголовки WinAPI ---
 #include <windows.h>
-#include <dbt.h>        // Для сообщений WM_DEVICECHANGE
-#include <Setupapi.h>   // Для информации об устройствах
-#include <Cfgmgr32.h>   // Для функции извлечения
-#include <initguid.h>   // Для определения GUID_DEVINTERFACE_USB_DEVICE
+#include <dbt.h>
+#include <Setupapi.h>
+#include <Cfgmgr32.h>
+#include <initguid.h>
 #include <usbiodef.h>
+#include <winioctl.h>
+#include <fileapi.h>
 
-// Forward-декларации для UI классов Qt
+// Forward-декларации
 class QTreeWidget;
 class QTreeWidgetItem;
 class QTextEdit;
 class QPushButton;
 
-// Структура для хранения информации о USB-устройстве
+// Универсальная структура для любого USB-устройства
 struct UsbDevice {
     QString name;
     QString type;
-    QString instanceId; // Уникальный ID экземпляра устройства, нужен для извлечения
+    QString instanceId;
     bool isEjectable = false;
+    QString driveLetter; // Будет заполнено только для накопителей
 };
 
 class UsbMonitorWindow : public QWidget
@@ -33,7 +37,6 @@ public:
     ~UsbMonitorWindow();
 
 protected:
-    // Переопределяем метод для перехвата системных событий Windows
     bool nativeEvent(const QByteArray& eventType, void* message, qintptr* result) override;
 
 private slots:
@@ -41,20 +44,23 @@ private slots:
     void ejectSelectedDevice();
 
 private:
-    // --- UI Элементы ---
     QTreeWidget* m_deviceTree = nullptr;
     QTextEdit* m_consoleLog = nullptr;
     QPushButton* m_refreshButton = nullptr;
     QPushButton* m_ejectButton = nullptr;
 
-    // --- WinAPI ---
-    HDEVNOTIFY m_hDeviceNotify = nullptr; // Дескриптор для регистрации уведомлений
+    HDEVNOTIFY m_hDeviceNotify = nullptr;
+    // Карта для связи InstanceID родительского USB-узла с буквой диска
+    QMap<QString, QString> m_driveMap;
+    // Для отслеживания безопасного извлечения
+    QString m_pendingEjectDeviceName;
 
-    // --- Приватные методы ---
     void initUI();
     void registerDeviceNotifications();
     void logMessage(const QString& message);
 
-    // Вспомогательная функция для получения информации о конкретном устройстве
-    UsbDevice getDeviceInfo(HDEVINFO hDevInfo, SP_DEVINFO_DATA& devInfoData);
+    // Новые и переработанные вспомогательные функции
+    UsbDevice getUsbDeviceInfo(HDEVINFO hDevInfo, SP_DEVINFO_DATA& devInfoData);
+    QString getDriveLetterFromUsbInstanceId(const QString& instanceId);
+    void buildDriveMap();
 };
