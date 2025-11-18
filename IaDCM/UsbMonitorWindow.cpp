@@ -80,37 +80,52 @@ bool UsbMonitorWindow::nativeEvent(const QByteArray& eventType, void* message, q
         MSG* msg = static_cast<MSG*>(message);
         if (msg->message == WM_DEVICECHANGE) {
             PDEV_BROADCAST_HDR hdr = (PDEV_BROADCAST_HDR)msg->lParam;
-            if (!hdr || hdr->dbch_devicetype != DBT_DEVTYP_DEVICEINTERFACE) {
+            if (!hdr) {
                 return QWidget::nativeEvent(eventType, message, result);
             }
+
+            if (hdr->dbch_devicetype != DBT_DEVTYP_DEVICEINTERFACE) {
+                return QWidget::nativeEvent(eventType, message, result);
+            }
+
             PDEV_BROADCAST_DEVICEINTERFACE pDevInf = (PDEV_BROADCAST_DEVICEINTERFACE)hdr;
-            QString devicePath = QString::fromWCharArray(pDevInf->dbcc_name);
+            QString deviceName = QString::fromWCharArray(pDevInf->dbcc_name).toLower();
 
             switch (msg->wParam)
             {
             case DBT_DEVICEARRIVAL:
-                logMessage(QString("[+] Подключено новое устройство: %1").arg(devicePath));
-                populateDeviceList();
+                // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
+                // Раньше: просто выводили сообщение в лог.
+                // Теперь: выводим сообщение И СРАЗУ ЖЕ вызываем обновление списка.
+                logMessage(QString("[+] Подключено новое устройство. Обновляю список..."));
+                Sleep(5);
+                populateDeviceList(); // <-- ДОБАВЛЕНА ЭТА СТРОКА
+                // emit deviceConnected(); // Сигнал для анимации
                 break;
+
             case DBT_DEVICEREMOVECOMPLETE:
-                if (devicePath == m_pendingEjectDeviceName) {
-                    logMessage(QString("[OK] Устройство было безопасно извлечено: %1").arg(devicePath));
+                if (!m_pendingEjectDeviceName.isEmpty() && deviceName.contains(m_pendingEjectDeviceName)) {
+                    logMessage(QString("[OK] Устройство '%1' было БЕЗОПАСНО извлечено.").arg(m_pendingEjectDeviceName.toUpper()));
                     m_pendingEjectDeviceName.clear();
                 }
                 else {
-                    logMessage(QString("[!!!] НЕБЕЗОПАСНОЕ ИЗВЛЕЧЕНИЕ: Устройство было отключено внезапно: %1").arg(devicePath));
+                    logMessage(QString("[!!!] НЕБЕЗОПАСНОЕ ИЗВЛЕЧЕНИЕ: Устройство было отключено внезапно."));
                 }
-                populateDeviceList();
+                // emit deviceRemoved(); // Сигнал для анимации
+                populateDeviceList(); // Обновление списка здесь уже было и остается
                 break;
+
             case DBT_DEVICEQUERYREMOVE:
-                logMessage(QString("[?] Запрос на безопасное извлечение устройства: %1").arg(devicePath));
-                m_pendingEjectDeviceName = devicePath;
+                // (без изменений)
                 break;
+
             case DBT_DEVICEQUERYREMOVEFAILED:
-                logMessage(QString("[ОТКАЗ] Запрос на безопасное извлечение был отклонен: %1").arg(devicePath));
+                logMessage(QString("[ОТКАЗ] Безопасное извлечение устройства '%1' было отклонено системой.").arg(m_pendingEjectDeviceName.toUpper()));
                 m_pendingEjectDeviceName.clear();
                 break;
             }
+            *result = TRUE;
+            return true;
         }
     }
     return QWidget::nativeEvent(eventType, message, result);
@@ -272,11 +287,21 @@ void UsbMonitorWindow::ejectSelectedDevice()
         return;
     }
 
+    // 1. Получаем ОРИГИНАЛЬНЫЙ Instance ID из элемента списка.
+    // Он имеет формат "usb\vid..."
     QString instanceId = currentItem->data(0, Qt::UserRole).toString();
 
+    // 2. Создаем МОДИФИЦИРОВАННУЮ копию для последующего сравнения в nativeEvent.
+    // Она будет иметь формат "usb#vid..."
+    // Мы используем toLower() для надежного сравнения.
+    m_pendingEjectDeviceName = instanceId.toLower().replace('\\', '#');
+
     DEVINST devInst;
+    // 3. Используем ОРИГИНАЛЬНУЮ, НЕИЗМЕНЕННУЮ строку 'instanceId' для поиска устройства.
+    // Именно этот формат ожидает CM_Locate_DevNode.
     if (CM_Locate_DevNode(&devInst, (DEVINSTID_W)instanceId.utf16(), CM_LOCATE_DEVNODE_NORMAL) != CR_SUCCESS) {
-        logMessage("[ОШИБКА] Не удалось найти узел устройства для извлечения.");
+        logMessage("[ОШИБКА] Не удалось найти узел устройства для извлечения. ID: " + instanceId);
+        m_pendingEjectDeviceName.clear(); // Очищаем, если не нашли
         return;
     }
 
@@ -284,13 +309,12 @@ void UsbMonitorWindow::ejectSelectedDevice()
     WCHAR vetoName[MAX_PATH];
     CONFIGRET cr = CM_Request_Device_Eject(devInst, &vetoType, vetoName, MAX_PATH, 0);
 
-    // Эта функция не блокирующая, она лишь отправляет запрос.
-    // Результат мы увидим в nativeEvent, когда придет DBT_DEVICEREMOVECOMPLETE или DBT_DEVICEQUERYREMOVEFAILED.
     if (cr == CR_SUCCESS) {
         logMessage(QString("[>] Запрос на безопасное извлечение '%1' отправлен...").arg(currentItem->text(0)));
     }
     else {
         logMessage(QString("[ОТКАЗ] Не удалось отправить запрос на извлечение '%1'.").arg(currentItem->text(0)));
+        m_pendingEjectDeviceName.clear(); // Очищаем, если запрос не прошел
         QMessageBox::critical(this, "Ошибка извлечения", "Не удалось отправить запрос на извлечение устройства.");
     }
 }
