@@ -1,6 +1,7 @@
 #include "HubWindow.h"
 #include "QtLab1Window.h"
 #include "WebcamWindow.h" // Подключаем заголовок нового окна
+#include "UsbMonitorWindow.h"
 
 HubWindow::HubWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -34,6 +35,17 @@ HubWindow::HubWindow(QWidget* parent)
         webcamWindow->show();
 
         connect(webcamWindow, &QObject::destroyed, this, [=]() {
+            this->show();
+            });
+        });
+    connect(ui.pushButton_4, &QPushButton::clicked, this, [=]() {
+        UsbMonitorWindow* usbWindow = new UsbMonitorWindow();
+        usbWindow->setAttribute(Qt::WA_DeleteOnClose);
+
+        this->hide();
+        usbWindow->show();
+
+        connect(usbWindow, &QObject::destroyed, this, [=]() {
             this->show();
             });
         });

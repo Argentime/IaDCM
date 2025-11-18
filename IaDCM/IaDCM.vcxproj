@@ -112,6 +112,16 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="QtLab1Window.cpp" />
+    <ClCompile Include="UsbMonitorWindow.cpp">
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
+    </ClCompile>
     <ClCompile Include="WebcamWindow.cpp" />
     <QtRcc Include="HubWindow.qrc" />
     <QtUic Include="HubWindow.ui" />
@@ -125,6 +135,9 @@
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="WebcamWindow.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="UsbMonitorWindow.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

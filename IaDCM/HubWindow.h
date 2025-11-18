@@ -3,9 +3,12 @@
 #include <QtWidgets/QMainWindow>
 #include "ui_HubWindow.h"
 #include "QtLab1Window.h"
+#include "WebcamWindow.h"
+#include "UsbMonitorWindow.h"
 
 // Прямое объявление класса, чтобы не подключать заголовок
 class WebcamWindow;
+class UsbMonitorWindow;
 
 class HubWindow : public QMainWindow
 {
@@ -20,4 +23,5 @@ private:
     QMovie* movie;
     QtLab1Window* lab1Window; // окно для ЛР1
     WebcamWindow* webcamWindow; // окно для работы с камерой
+    UsbMonitorWindow* usbWindow;
 };
