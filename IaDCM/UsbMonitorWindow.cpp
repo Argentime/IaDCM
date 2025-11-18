@@ -313,8 +313,8 @@ void UsbMonitorWindow::ejectSelectedDevice()
         logMessage(QString("[>] Запрос на безопасное извлечение '%1' отправлен...").arg(currentItem->text(0)));
     }
     else {
-        logMessage(QString("[ОТКАЗ] Не удалось отправить запрос на извлечение '%1'.").arg(currentItem->text(0)));
+        logMessage(QString("[ОТКАЗ] В извлечении устройства '%1' отказано системой.").arg(currentItem->text(0)));
         m_pendingEjectDeviceName.clear(); // Очищаем, если запрос не прошел
-        QMessageBox::critical(this, "Ошибка извлечения", "Не удалось отправить запрос на извлечение устройства.");
+        QMessageBox::critical(this, "Ошибка извлечения", "В извлечении устройства отказано системой.");
     }
 }
