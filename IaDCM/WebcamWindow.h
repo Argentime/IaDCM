@@ -76,5 +76,6 @@ private:
 
     // ID для наших горячих клавиш
     const int TAKE_PHOTO_HOTKEY_ID = 1;
+    const int TAKE_VIDEO_HOTKEY_ID = 3;
     const int EXIT_STEALTH_HOTKEY_ID = 2;
 };
