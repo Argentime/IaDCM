@@ -16,21 +16,17 @@ BluetoothWindow::BluetoothWindow(QWidget* parent)
         this, &BluetoothWindow::deviceDiscovered);
     connect(m_discoveryAgent, &QBluetoothDeviceDiscoveryAgent::finished,
         this, &BluetoothWindow::deviceScanFinished);
-
-    // Инициализация сокета (RFCOMM)
-    m_socket = new QBluetoothSocket(QBluetoothServiceInfo::RfcommProtocol, this);
-
-    connect(m_socket, &QBluetoothSocket::connected, this, &BluetoothWindow::socketConnected);
-    connect(m_socket, &QBluetoothSocket::disconnected, this, &BluetoothWindow::socketDisconnected);
-    connect(m_socket, &QBluetoothSocket::readyRead, this, &BluetoothWindow::socketReadyRead);
-    connect(m_socket, &QBluetoothSocket::errorOccurred, this, &BluetoothWindow::socketErrorOccurred);
-
     startDiscovery();
 }
 
 BluetoothWindow::~BluetoothWindow()
 {
-    if (m_socket->isOpen()) m_socket->close();
+    if (m_socket) {
+        if (m_socket->isOpen()) m_socket->close();
+    }
+    if (m_file) {
+        delete m_file;
+    }
 }
 
 void BluetoothWindow::initUI()
@@ -117,6 +113,7 @@ void BluetoothWindow::startFileTransfer()
     QString fileName = QFileDialog::getOpenFileName(this, "Выберите файл", "", "Audio (*.mp3 *.wav);;All (*.*)");
     if (fileName.isEmpty()) return;
 
+    // Сброс файла
     if (m_file) { delete m_file; m_file = nullptr; }
     m_file = new QFile(fileName);
     if (!m_file->open(QIODevice::ReadOnly)) {
@@ -124,12 +121,37 @@ void BluetoothWindow::startFileTransfer()
         return;
     }
 
+    // --- ИСПРАВЛЕНИЕ КРАША ЗДЕСЬ ---
+
+    // 1. Если сокет уже существует, удаляем его.
+    // Мы не используем deleteLater(), чтобы гарантировать удаление прямо сейчас перед созданием нового.
+    if (m_socket) {
+        if (m_socket->state() != QBluetoothSocket::SocketState::UnconnectedState) {
+            m_socket->abort();
+        }
+        delete m_socket;
+        m_socket = nullptr;
+    }
+
+    // 2. Создаем СВЕЖИЙ экземпляр сокета
+    m_socket = new QBluetoothSocket(QBluetoothServiceInfo::RfcommProtocol, this);
+
+    // 3. Заново подключаем все сигналы (так как старый объект уничтожен)
+    connect(m_socket, &QBluetoothSocket::connected, this, &BluetoothWindow::socketConnected);
+    connect(m_socket, &QBluetoothSocket::disconnected, this, &BluetoothWindow::socketDisconnected);
+    connect(m_socket, &QBluetoothSocket::readyRead, this, &BluetoothWindow::socketReadyRead);
+    connect(m_socket, &QBluetoothSocket::errorOccurred, this, &BluetoothWindow::socketErrorOccurred);
+
+    // 4. Обновляем UI и состояние
     m_statusLabel->setText("Подключение к сокету OBEX...");
     m_progressBar->setVisible(true);
     m_progressBar->setValue(0);
     m_sendButton->setEnabled(false);
 
-    // Подключаемся к сервису Object Push (UUID: 00001105...)
+    // Сбрасываем состояние протокола
+    m_state = Idle;
+
+    // 5. Подключаемся
     m_socket->connectToService(remoteDevice.address(), QBluetoothUuid::ServiceClassUuid::ObexObjectPush);
 }
 
