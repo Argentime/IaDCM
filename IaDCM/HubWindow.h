@@ -9,6 +9,7 @@
 // Прямое объявление класса, чтобы не подключать заголовок
 class WebcamWindow;
 class UsbMonitorWindow;
+class BluetoothWindow;
 
 class HubWindow : public QMainWindow
 {

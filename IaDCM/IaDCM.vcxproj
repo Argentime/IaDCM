@@ -51,7 +51,7 @@
   </ImportGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="QtSettings">
     <QtInstall>6.9.1_msvc2022_64</QtInstall>
-    <QtModules>core;gui;widgets;multimedia;multimediawidgets</QtModules>
+    <QtModules>core;gui;widgets;multimedia;multimediawidgets;bluetooth</QtModules>
     <QtBuildConfig>debug</QtBuildConfig>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
@@ -111,6 +111,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BluetoothWindow.cpp" />
     <ClCompile Include="QtLab1Window.cpp" />
     <ClCompile Include="UsbMonitorWindow.cpp">
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
@@ -138,6 +139,9 @@
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="UsbMonitorWindow.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="BluetoothWindow.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

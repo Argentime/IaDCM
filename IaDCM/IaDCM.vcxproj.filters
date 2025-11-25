@@ -49,6 +49,9 @@
     <ClCompile Include="UsbMonitorWindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="BluetoothWindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="QtLab1Window.h">
@@ -58,6 +61,9 @@
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="UsbMonitorWindow.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="BluetoothWindow.h">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>
