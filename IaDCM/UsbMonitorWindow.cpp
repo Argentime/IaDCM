@@ -94,13 +94,10 @@ bool UsbMonitorWindow::nativeEvent(const QByteArray& eventType, void* message, q
             switch (msg->wParam)
             {
             case DBT_DEVICEARRIVAL:
-                // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
-                // Раньше: просто выводили сообщение в лог.
-                // Теперь: выводим сообщение И СРАЗУ ЖЕ вызываем обновление списка.
                 logMessage(QString("[+] Подключено новое устройство. Обновляю список..."));
                 Sleep(5);
-                populateDeviceList(); // <-- ДОБАВЛЕНА ЭТА СТРОКА
-                // emit deviceConnected(); // Сигнал для анимации
+                populateDeviceList(); 
+
                 break;
 
             case DBT_DEVICEREMOVECOMPLETE:
@@ -111,12 +108,10 @@ bool UsbMonitorWindow::nativeEvent(const QByteArray& eventType, void* message, q
                 else {
                     logMessage(QString("[!!!] НЕБЕЗОПАСНОЕ ИЗВЛЕЧЕНИЕ: Устройство было отключено внезапно."));
                 }
-                // emit deviceRemoved(); // Сигнал для анимации
-                populateDeviceList(); // Обновление списка здесь уже было и остается
+                populateDeviceList(); 
                 break;
 
             case DBT_DEVICEQUERYREMOVE:
-                // (без изменений)
                 break;
 
             case DBT_DEVICEQUERYREMOVEFAILED:
@@ -135,7 +130,7 @@ void UsbMonitorWindow::populateDeviceList()
 {
     m_deviceTree->clear();
     logMessage("Сканирование подключенных USB-устройств...");
-    buildDriveMap(); // Обновляем нашу карту дисков
+    buildDriveMap(); 
 
     HDEVINFO hDevInfo = SetupDiGetClassDevs(NULL, L"USB", NULL, DIGCF_PRESENT | DIGCF_ALLCLASSES);
     if (hDevInfo == INVALID_HANDLE_VALUE) return;
@@ -151,7 +146,7 @@ void UsbMonitorWindow::populateDeviceList()
         QTreeWidgetItem* item = new QTreeWidgetItem(m_deviceTree);
         item->setText(0, deviceInfo.name);
         item->setText(1, deviceInfo.type);
-        item->setText(2, m_driveMap.value(deviceInfo.instanceId, "")); // Ищем букву диска в карте
+        item->setText(2, m_driveMap.value(deviceInfo.instanceId, "")); 
         item->setText(3, deviceInfo.isEjectable ? "Да" : "Нет");
         item->setData(0, Qt::UserRole, deviceInfo.instanceId);
         item->setData(1, Qt::UserRole, deviceInfo.isEjectable);
@@ -185,15 +180,10 @@ UsbDevice UsbMonitorWindow::getUsbDeviceInfo(HDEVINFO hDevInfo, SP_DEVINFO_DATA&
         bool isRemovable = (capabilities & CM_DEVCAP_REMOVABLE);
         bool isSurpriseRemovable = (capabilities & CM_DEVCAP_SURPRISEREMOVALOK);
 
-        // Корректная логика для Windows 10/11:
-        // Устройство можно извлекать, если оно физически съемное И не помечено как "ok для внезапного извлечения".
-        // Это ловит устройства со старой политикой "Повышение производительности".
         if (isRemovable && !isSurpriseRemovable) {
             device.isEjectable = true;
         }
 
-        // Для флешек с новой политикой "Быстрое удаление" isSurpriseRemovable=true.
-        // Мы определим их извлекаемость по наличию буквы диска.
         if (m_driveMap.contains(device.instanceId)) {
             device.isEjectable = true;
         }
@@ -211,14 +201,6 @@ void UsbMonitorWindow::buildDriveMap()
     while (*pDrive) {
         QString driveLetter = QString::fromWCharArray(pDrive);
         if (GetDriveType(pDrive) == DRIVE_REMOVABLE) {
-            // Используем логику из предыдущего ответа, чтобы найти InstanceID по букве диска
-            // (Код функции getDriveInfo из предыдущего ответа, адаптированный)
-            // ... Этот код остается таким же сложным, как и раньше, и находит InstanceID родительского USB-узла ...
-            // В целях краткости, представим, что он возвращает нам ID:
-            // QString instanceId = findInstanceIdForDrive(driveLetter);
-            // m_driveMap[instanceId] = driveLetter;
-
-            // Реализация поиска InstanceID по букве диска (из предыдущего ответа)
             QString volumePath = "\\\\.\\" + driveLetter.left(2);
             HANDLE hVolume = CreateFile(volumePath.toStdWString().c_str(), 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
             if (hVolume == INVALID_HANDLE_VALUE) continue;
@@ -287,21 +269,14 @@ void UsbMonitorWindow::ejectSelectedDevice()
         return;
     }
 
-    // 1. Получаем ОРИГИНАЛЬНЫЙ Instance ID из элемента списка.
-    // Он имеет формат "usb\vid..."
     QString instanceId = currentItem->data(0, Qt::UserRole).toString();
 
-    // 2. Создаем МОДИФИЦИРОВАННУЮ копию для последующего сравнения в nativeEvent.
-    // Она будет иметь формат "usb#vid..."
-    // Мы используем toLower() для надежного сравнения.
     m_pendingEjectDeviceName = instanceId.toLower().replace('\\', '#');
 
     DEVINST devInst;
-    // 3. Используем ОРИГИНАЛЬНУЮ, НЕИЗМЕНЕННУЮ строку 'instanceId' для поиска устройства.
-    // Именно этот формат ожидает CM_Locate_DevNode.
     if (CM_Locate_DevNode(&devInst, (DEVINSTID_W)instanceId.utf16(), CM_LOCATE_DEVNODE_NORMAL) != CR_SUCCESS) {
         logMessage("[ОШИБКА] Не удалось найти узел устройства для извлечения. ID: " + instanceId);
-        m_pendingEjectDeviceName.clear(); // Очищаем, если не нашли
+        m_pendingEjectDeviceName.clear();
         return;
     }
 
@@ -314,7 +289,7 @@ void UsbMonitorWindow::ejectSelectedDevice()
     }
     else {
         logMessage(QString("[ОТКАЗ] В извлечении устройства '%1' отказано системой.").arg(currentItem->text(0)));
-        m_pendingEjectDeviceName.clear(); // Очищаем, если запрос не прошел
+        m_pendingEjectDeviceName.clear(); 
         QMessageBox::critical(this, "Ошибка извлечения", "В извлечении устройства отказано системой.");
     }
 }
