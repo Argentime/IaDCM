@@ -60,7 +60,6 @@ void BluetoothWindow::initUI()
         m_sendButton->setEnabled(!m_deviceList->selectedItems().isEmpty());
         });
 
-    // Стили (можно оставить те же)
     this->setStyleSheet("QWidget { background: #1a202c; color: white; } QListWidget { background: #2d3748; } QPushButton { background: #2b6cb0; padding: 5px; }");
 }
 
@@ -80,8 +79,6 @@ void BluetoothWindow::deviceDiscovered(const QBluetoothDeviceInfo& device)
         if (d.address() == device.address()) return;
     }
 
-    // Нас интересуют телефоны (OPP service)
-    // Но часто UUID не видны сразу, поэтому добавляем все, фильтруем по классу
     QBluetoothDeviceInfo::MajorDeviceClass major = device.majorDeviceClass();
 
     m_foundDevices.append(device);
@@ -101,7 +98,6 @@ void BluetoothWindow::deviceScanFinished()
     m_scanButton->setEnabled(true);
 }
 
-// --- НАЧАЛО ЛОГИКИ ПЕРЕДАЧИ ---
 
 void BluetoothWindow::startFileTransfer()
 {
@@ -121,10 +117,6 @@ void BluetoothWindow::startFileTransfer()
         return;
     }
 
-    // --- ИСПРАВЛЕНИЕ КРАША ЗДЕСЬ ---
-
-    // 1. Если сокет уже существует, удаляем его.
-    // Мы не используем deleteLater(), чтобы гарантировать удаление прямо сейчас перед созданием нового.
     if (m_socket) {
         if (m_socket->state() != QBluetoothSocket::SocketState::UnconnectedState) {
             m_socket->abort();
@@ -133,32 +125,26 @@ void BluetoothWindow::startFileTransfer()
         m_socket = nullptr;
     }
 
-    // 2. Создаем СВЕЖИЙ экземпляр сокета
     m_socket = new QBluetoothSocket(QBluetoothServiceInfo::RfcommProtocol, this);
 
-    // 3. Заново подключаем все сигналы (так как старый объект уничтожен)
     connect(m_socket, &QBluetoothSocket::connected, this, &BluetoothWindow::socketConnected);
     connect(m_socket, &QBluetoothSocket::disconnected, this, &BluetoothWindow::socketDisconnected);
     connect(m_socket, &QBluetoothSocket::readyRead, this, &BluetoothWindow::socketReadyRead);
     connect(m_socket, &QBluetoothSocket::errorOccurred, this, &BluetoothWindow::socketErrorOccurred);
 
-    // 4. Обновляем UI и состояние
     m_statusLabel->setText("Подключение к сокету OBEX...");
     m_progressBar->setVisible(true);
     m_progressBar->setValue(0);
     m_sendButton->setEnabled(false);
 
-    // Сбрасываем состояние протокола
     m_state = Idle;
 
-    // 5. Подключаемся
     m_socket->connectToService(remoteDevice.address(), QBluetoothUuid::ServiceClassUuid::ObexObjectPush);
 }
 
 void BluetoothWindow::socketConnected()
 {
     m_statusLabel->setText("Сокет подключен. Инициализация OBEX...");
-    // 1. Отправляем OBEX CONNECT
     sendObexConnect();
 }
 
@@ -176,15 +162,12 @@ void BluetoothWindow::socketDisconnected()
     if (m_file) m_file->close();
 }
 
-// --- РЕАЛИЗАЦИЯ ПРОТОКОЛА OBEX (Ручная сборка пакетов) ---
 
 void BluetoothWindow::sendObexConnect()
 {
     m_state = ConnectingObex;
 
-    // Структура пакета CONNECT:
-    // [OpCode: 0x80] [Len: 2 bytes] [Ver: 0x10] [Flags: 0x00] [MaxPacket: 2 bytes]
-    QByteArray packet;
+     QByteArray packet;
     packet.append((char)0x80); // OpCode: Connect
     packet.append((char)0x00); packet.append((char)0x07); // Length: 7 bytes total
     packet.append((char)0x10); // Version 1.0
@@ -200,7 +183,6 @@ void BluetoothWindow::sendObexPut()
     bool firstPacket = (m_file->pos() == 0);
     bool finalPacket = false;
 
-    // Лимит данных = МаксПакет - Заголовки (грубо берем 1KB для безопасности)
     int chunkSize = 1024;
     QByteArray fileData = m_file->read(chunkSize);
 
@@ -208,44 +190,37 @@ void BluetoothWindow::sendObexPut()
         finalPacket = true;
     }
 
-    // 1. OpCode
-    // 0x02 = PUT (есть еще данные), 0x82 = PUT Final (последний пакет)
+    // 0x02 = PUT , 0x82 = PUT Final
     packet.append(finalPacket ? (char)0x82 : (char)0x02);
 
-    // 2. Placeholder для длины пакета (2 байта), заполним в конце
     packet.append((char)0x00); packet.append((char)0x00);
 
-    // 3. Заголовки (Добавляем только в первый пакет)
+    // Заголовки 
     if (firstPacket) {
         m_state = SendingMetadata;
 
         // --- Header: NAME (0x01) ---
-        // Имя должно быть в кодировке UTF-16 Big Endian с завершающим нулем
         QFileInfo fi(*m_file);
         QString fname = fi.fileName();
         QByteArray nameData;
 
-        // Конвертация в UTF-16BE
         const ushort* utf16 = fname.utf16();
         int len = fname.length();
         for (int i = 0; i < len; ++i) {
             nameData.append((char)((utf16[i] >> 8) & 0xFF));
             nameData.append((char)(utf16[i] & 0xFF));
         }
-        // Null terminator (2 bytes)
         nameData.append((char)0x00); nameData.append((char)0x00);
 
         packet.append((char)0x01); // Header ID: Name
-        // Длина заголовка (ID + 2 байта длины + данные)
         int headerLen = 3 + nameData.size();
         packet.append((char)((headerLen >> 8) & 0xFF));
         packet.append((char)(headerLen & 0xFF));
         packet.append(nameData);
 
         // --- Header: LENGTH (0xC3) ---
-        // Общий размер файла (4 байта)
         quint32 fileSize = (quint32)m_file->size();
-        packet.append((char)0xC3); // Header ID: Length
+        packet.append((char)0xC3); 
         packet.append((char)((fileSize >> 24) & 0xFF));
         packet.append((char)((fileSize >> 16) & 0xFF));
         packet.append((char)((fileSize >> 8) & 0xFF));
@@ -256,23 +231,19 @@ void BluetoothWindow::sendObexPut()
     }
 
     // --- Header: BODY (0x48) или END OF BODY (0x49) ---
-    // Данные файла
     packet.append(finalPacket ? (char)0x49 : (char)0x48);
 
-    // Длина заголовка тела (ID + 2 байта длины + данные)
     int bodyHeaderLen = 3 + fileData.size();
     packet.append((char)((bodyHeaderLen >> 8) & 0xFF));
     packet.append((char)(bodyHeaderLen & 0xFF));
     packet.append(fileData);
 
-    // 4. Финализируем длину всего пакета
     int totalLen = packet.size();
     packet[1] = (char)((totalLen >> 8) & 0xFF);
     packet[2] = (char)(totalLen & 0xFF);
 
     m_socket->write(packet);
 
-    // Обновляем прогресс
     if (m_file->size() > 0) {
         int percent = (int)((m_file->pos() * 100) / m_file->size());
         m_progressBar->setValue(percent);
@@ -289,26 +260,19 @@ void BluetoothWindow::sendObexDisconnect()
     m_socket->write(packet);
 }
 
-// --- ЧТЕНИЕ ОТВЕТОВ ОТ ТЕЛЕФОНА ---
 
 void BluetoothWindow::socketReadyRead()
 {
     QByteArray response = m_socket->readAll();
-    if (response.size() < 3) return; // Слишком короткий ответ
-
-    // Первый байт ответа - код ответа OBEX
-    // 0xA0 = Success / OK
-    // 0x90 = Continue (нужно слать еще данные)
-    // 0xC0+ = Ошибки (Bad Request и т.д.)
+    if (response.size() < 3) return;
 
     unsigned char code = (unsigned char)response[0];
 
-    // Логика конечного автомата
     switch (m_state) {
     case ConnectingObex:
         if (code == 0xA0) { // Connect OK
             m_statusLabel->setText("OBEX подключен. Отправка файла...");
-            sendObexPut(); // Начинаем слать файл
+            sendObexPut();
         }
         else {
             m_statusLabel->setText(QString("Ошибка Connect: 0x%1").arg(code, 0, 16));
@@ -317,10 +281,10 @@ void BluetoothWindow::socketReadyRead()
 
     case SendingMetadata:
     case SendingBody:
-        if (code == 0x90) { // Continue (Телефон просит еще данные)
+        if (code == 0x90) { // Continue 
             sendObexPut();
         }
-        else if (code == 0xA0) { // Success (Передача завершена!)
+        else if (code == 0xA0) { // Success 
             m_statusLabel->setText("Файл передан!");
             sendObexDisconnect();
         }
@@ -333,7 +297,7 @@ void BluetoothWindow::socketReadyRead()
         if (code == 0xA0) {
             m_statusLabel->setText("Готово. Нажмите уведомление на телефоне!");
             m_progressBar->setValue(100);
-            QMessageBox::information(this, "Успех", "Файл отправлен!\n\nПроверьте телефон: должно появиться уведомление 'Входящий файл' или 'Файл получен'. Нажмите на него для воспроизведения.");
+            QMessageBox::information(this, "Успех", "Файл отправлен!,,");
             m_socket->disconnectFromService();
         }
         break;
